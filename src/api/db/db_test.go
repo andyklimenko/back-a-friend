@@ -1,11 +1,11 @@
 package db
 
 import (
-	"testing"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
+	"testing"
 )
 
 func setupMyDb() (_ *Db, _ func(), rerr error) {
@@ -13,7 +13,7 @@ func setupMyDb() (_ *Db, _ func(), rerr error) {
 
 	tmpDir, err := ioutil.TempDir("", "dbTest")
 	if err != nil {
-		return nil, func(){}, err
+		return nil, func() {}, err
 	}
 	defer func() {
 		if rerr != nil {
@@ -23,12 +23,12 @@ func setupMyDb() (_ *Db, _ func(), rerr error) {
 
 	dbDir := path.Join(tmpDir, "db")
 	if err := os.MkdirAll(dbDir, 0777); err != nil {
-		return nil, func(){}, err
+		return nil, func() {}, err
 	}
 
 	dbPath := path.Join(dbDir, "testdb.db")
 	if err := mydb.Create(dbPath); err != nil {
-		return nil, func(){}, err
+		return nil, func() {}, err
 	}
 
 	closer := func() {
@@ -60,7 +60,7 @@ func TestDb_CreateTournament(t *testing.T) {
 	var tourId, depo int
 	var w, p string
 
-	i:= 0
+	i := 0
 	for rows.Next() {
 		if i > 0 {
 			t.Fatal("Too many records")
@@ -153,5 +153,53 @@ func TestDb_JoinTournament(t *testing.T) {
 
 	if err := myDb.JoinTournament(tournamentId, playerId1); err != ErrAlreadyExists {
 		t.Error(err)
+	}
+}
+
+func TestDb_PlayerPointsNegative(t *testing.T) {
+	myDb, closer, err := setupMyDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	if _, err := myDb.PlayerPoints("no player created yet"); err != ErrorNotFound {
+		t.Error(err)
+	}
+}
+
+func TestDb_FundPlayer(t *testing.T) {
+	myDb, closer, err := setupMyDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	players := make(map[string]int)
+	players["Joe"] = 100
+	players["Bob"] = 500
+
+	for player, pts := range players {
+		if err := myDb.FundPlayer(player, pts); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := myDb.FundPlayer("Joe", 400); err != nil {
+		t.Fatal(err)
+	}
+
+	joePts, err := myDb.PlayerPoints("Joe")
+	if err != nil {
+		t.Error(err)
+	}
+
+	bobPts, err := myDb.PlayerPoints("Joe")
+	if err != nil {
+		t.Error(err)
+	}
+
+	if joePts != bobPts {
+		t.Error(joePts, bobPts)
 	}
 }

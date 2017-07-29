@@ -3,27 +3,25 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"strings"
+	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
-	createTournamentsTable = "CREATE TABLE 'Tournaments' (`TourId`	INTEGER NOT NULL UNIQUE, `Deposit`	INTEGER NOT NULL, `Winners`	TEXT, `Players`	TEXT, PRIMARY KEY(TourId))"
-	createWinnersTable = "CREATE TABLE 'Winners' (`Winner-id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, `TourId` INTEGER NOT NULL, `Player-id`	TEXT NOT NULL, `Prize` INTEGER NOT NULL)"
-
-	announceTournamentQuery = "insert into Tournaments values (?, ?, '', '')"
-	selectTournamentPlayersQuery = "select Players from Tournaments where TourId=?"
-	updateTournamentPlayersQuery = "update Tournaments set Players=? where TourId = ?"
+	createTournamentsTable = "CREATE TABLE 'Tournaments' (`TourId`	INTEGER NOT NULL UNIQUE, `Deposit`	INTEGER NOT NULL, `Winners`	TEXT, `Players`	TEXT, PRIMARY KEY(TourId));"
+	createWinnersTable     = "CREATE TABLE 'Winners' (`Winner-id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, `TourId` INTEGER NOT NULL, `Player-id`	TEXT NOT NULL, `Prize` INTEGER NOT NULL);"
+	createPlayersTable     = "CREATE TABLE `Players` (`PlayerId` TEXT NOT NULL UNIQUE, `Points`	INTEGER, PRIMARY KEY(PlayerId));"
 )
 
 var (
-	ErrorNotFound = errors.New("Not found")
+	ErrorNotFound    = errors.New("Not found")
 	ErrAlreadyExists = errors.New("Already exists")
 )
 
 type Db struct {
-	db *sql.DB
+	db    *sql.DB
+	dbMux sync.Mutex
 }
 
 func (d *Db) Create(dbPath string) error {
@@ -33,8 +31,13 @@ func (d *Db) Create(dbPath string) error {
 		return err
 	}
 
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+
 	var statement *sql.Stmt
-	statement, err = d.db.Prepare(createTournamentsTable)
+	statement, err = tx.Prepare(createTournamentsTable)
 	if err != nil {
 		return err
 	}
@@ -42,7 +45,7 @@ func (d *Db) Create(dbPath string) error {
 		return err
 	}
 
-	statement, err = d.db.Prepare(createWinnersTable)
+	statement, err = tx.Prepare(createWinnersTable)
 	if err != nil {
 		return err
 	}
@@ -50,80 +53,12 @@ func (d *Db) Create(dbPath string) error {
 		return err
 	}
 
-	return nil
-}
-
-func (d *Db) CreateTournament(id int, deposit int) error {
-	tx, err := d.db.Begin()
+	statement, err = tx.Prepare(createPlayersTable)
 	if err != nil {
 		return err
 	}
-
-	stmt, err := tx.Prepare(announceTournamentQuery)
-	if err != nil {
+	if _, err = statement.Exec(); err != nil {
 		return err
 	}
-
-	defer stmt.Close()
-
-	_, err = stmt.Exec(id, deposit)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (d *Db) JoinTournament(tourId int, playerId string) (rerr error) {
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if rerr != nil {
-			tx.Rollback()
-		}
-	}()
-
-	rows, err := tx.Query(selectTournamentPlayersQuery, tourId)
-	if err != nil {
-		return err
-	}
-
-	if !rows.Next() {
-		return ErrorNotFound
-	}
-
-	var players string
-	if err := rows.Scan(&players); err != nil {
-		return err
-	}
-
-	pArr := strings.Split(players, ",")
-	for _, p := range pArr {
-		if p == playerId {
-			return ErrAlreadyExists
-		}
-	}
-
-	semicolonRequired := len(pArr) >= 1 && pArr[0] != ""
-	if semicolonRequired {
-		players += "," + playerId
-	} else {
-		players += playerId
-	}
-
-	stmt, err := tx.Prepare(updateTournamentPlayersQuery)
-	if err != nil {
-		return err
-	}
-	if _, err = stmt.Exec(players, tourId); err != nil {
-		return err
-	}
-
 	return tx.Commit()
 }

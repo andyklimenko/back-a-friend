@@ -2,7 +2,7 @@ package api
 
 type Winner struct {
 	PlayerId string
-	Prize int
+	Prize    int
 }
 
 type Api interface {
