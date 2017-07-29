@@ -2,17 +2,19 @@ package db
 
 import (
 	"database/sql"
+	"errors"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
-	"errors"
 )
 
 const (
-	createTournamentsTable = "CREATE TABLE 'Tournaments' ( `TourId`	INTEGER NOT NULL UNIQUE, `Winners` TEXT, `Deposit` INTEGER NOT NULL, `Players` TEXT, PRIMARY KEY(TourId))"
+	createTournamentsTable = "CREATE TABLE 'Tournaments' (`TourId`	INTEGER NOT NULL UNIQUE, `Deposit`	INTEGER NOT NULL, `Winners`	TEXT, `Players`	TEXT, PRIMARY KEY(TourId))"
 	createWinnersTable = "CREATE TABLE 'Winners' (`Winner-id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, `TourId` INTEGER NOT NULL, `Player-id`	TEXT NOT NULL, `Prize` INTEGER NOT NULL)"
 
-	announceTournamentQuery = "insert into Tournaments values (?, '', '', ?)"
+	announceTournamentQuery = "insert into Tournaments values (?, ?, '', '')"
 	selectTournamentPlayersQuery = "select Players from Tournaments where TourId=?"
+	updateTournamentPlayersQuery = "update Tournaments set Players=? where TourId = ?"
 )
 
 var (
@@ -75,7 +77,7 @@ func (d *Db) CreateTournament(id int, deposit int) error {
 	return nil
 }
 
-func (d *Db) JoinTournament(tourId int, playerId string, backers []string) (rerr error) {
+func (d *Db) JoinTournament(tourId int, playerId string) (rerr error) {
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -92,12 +94,36 @@ func (d *Db) JoinTournament(tourId int, playerId string, backers []string) (rerr
 		return err
 	}
 
+	if !rows.Next() {
+		return ErrorNotFound
+	}
+
 	var players string
 	if err := rows.Scan(&players); err != nil {
 		return err
 	}
 
-	// todo: parse players
+	pArr := strings.Split(players, ",")
+	for _, p := range pArr {
+		if p == playerId {
+			return ErrAlreadyExists
+		}
+	}
 
-	return nil
+	semicolonRequired := len(pArr) >= 1 && pArr[0] != ""
+	if semicolonRequired {
+		players += "," + playerId
+	} else {
+		players += playerId
+	}
+
+	stmt, err := tx.Prepare(updateTournamentPlayersQuery)
+	if err != nil {
+		return err
+	}
+	if _, err = stmt.Exec(players, tourId); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

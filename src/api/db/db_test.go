@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 )
 
 func setupMyDb() (_ *Db, _ func(), rerr error) {
@@ -32,7 +33,7 @@ func setupMyDb() (_ *Db, _ func(), rerr error) {
 
 	closer := func() {
 		mydb.db.Close()
-		os.Remove(tmpDir)
+		os.RemoveAll(tmpDir)
 	}
 
 	return mydb, closer, nil
@@ -57,26 +58,100 @@ func TestDb_CreateTournament(t *testing.T) {
 	}
 
 	var tourId, depo int
-	var winners, players string
+	var w, p string
 
-	rows.Next()
-	if err := rows.Scan(&tourId, &winners, &players, &depo); err != nil {
+	i:= 0
+	for rows.Next() {
+		if i > 0 {
+			t.Fatal("Too many records")
+		}
+		if err := rows.Scan(&tourId, &depo, &w, &p); err != nil {
+			t.Fatal(err)
+		}
+
+		if tourId != tournamentId {
+			t.Error(tourId)
+		}
+
+		if w != "" {
+			t.Error(w)
+		}
+
+		if p != "" {
+			t.Error(p)
+		}
+
+		if depo != deposit {
+			t.Error(depo)
+		}
+		i++
+	}
+}
+
+func TestDb_JoinTournament(t *testing.T) {
+	myDb, closer, err := setupMyDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	const tournamentId = 42
+	const deposit = 1000
+	if err := myDb.CreateTournament(tournamentId, deposit); err != nil {
 		t.Fatal(err)
 	}
 
-	if tourId != tournamentId {
-		t.Error(tourId)
+	playerId1 := "P1"
+	playerId2 := "P2"
+	if err := myDb.JoinTournament(tournamentId+1, playerId1); err != ErrorNotFound {
+		t.Error(err)
 	}
 
-	if winners != "" {
-		t.Error(winners)
+	if err := myDb.JoinTournament(tournamentId, playerId1); err != nil {
+		t.Fatal(err)
+	}
+	if err := myDb.JoinTournament(tournamentId, playerId2); err != nil {
+		t.Fatal(err)
 	}
 
-	if players != "" {
-		t.Error(players)
+	rows, err := myDb.db.Query("select * from Tournaments where TourId=?", tournamentId)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if depo != deposit {
-		t.Error(depo)
+	var tourId, depo int
+	var w, p string
+
+	players := []string{}
+	players = append(players, playerId1)
+	players = append(players, playerId2)
+
+	for rows.Next() {
+		if err := rows.Scan(&tourId, &depo, &w, &p); err != nil {
+			t.Fatal(err)
+		}
+
+		if tourId != tournamentId {
+			t.Error(tourId)
+		}
+
+		if w != "" {
+			t.Error(w)
+		}
+
+		plrs := strings.Split(p, ",")
+		for i, player := range plrs {
+			if player != players[i] {
+				t.Error(plrs)
+			}
+		}
+
+		if depo != deposit {
+			t.Error(depo)
+		}
+	}
+
+	if err := myDb.JoinTournament(tournamentId, playerId1); err != ErrAlreadyExists {
+		t.Error(err)
 	}
 }
