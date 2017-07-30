@@ -20,31 +20,27 @@ type Winner struct {
 	Prize    int
 }
 
-type funded struct {
-	backers   []string
-	fundedPts int
-}
-
 type Api interface {
 	Start() error
 	Take(playerId string, points int) error
 	Fund(playerId string, points int) error
 	AnnounceTournament(tourId int, deposit int) error
 	JoinTournament(tourId int, playerId string, backers []string) error
-	ResultTournament() ([]Winner, error)
+	ResultTournament() (Winner, error)
 	Balance(playerId string) (int, error)
+	FinishTournament() (Winner, error)
 }
 
 type api_impl struct {
 	db                 *db.Db
 	dbMux              sync.Mutex
 	activeTournamentId int
-	playersFunded      map[string]*funded
+	playersFunded      map[string][]string
 	joinedPlayers      []string
 }
 
 func (a *api_impl) Start() error {
-	a.playersFunded = make(map[string]*funded)
+	a.playersFunded = make(map[string][]string)
 	a.activeTournamentId = noActiveTournament
 	return nil
 }
@@ -130,7 +126,11 @@ func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string)
 		if err := a.db.UpdatePlayer(playerId, balance-info.Deposit); err != nil {
 			return err
 		}
-		return a.db.JoinTournament(tourId, playerId)
+		if err := a.db.JoinTournament(tourId, playerId); err != nil {
+			return err
+		}
+		a.joinedPlayers = append(a.joinedPlayers, playerId)
+		return nil
 	}
 
 	requiredPts := info.Deposit / (len(backers) + 1) // backers + playerId
@@ -153,12 +153,12 @@ func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string)
 		}
 	}
 
-	f := &funded{[]string{}, requiredPts}
+	f := []string{}
 	for b, pts := range backersMap {
 		if err := a.db.UpdatePlayer(b, pts-requiredPts); err != nil {
 			return err
 		}
-		f.backers = append(f.backers, b)
+		f = append(f, b)
 	}
 	a.playersFunded[playerId] = f
 	if err := a.db.UpdatePlayer(playerId, balance-requiredPts); err != nil {
@@ -172,18 +172,67 @@ func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string)
 	return nil
 }
 
-func (a *api_impl) ResultTournament() ([]Winner, error) {
-	//todo: implement
-	return []Winner{}, nil
+func (a *api_impl) ResultTournament() (Winner, error) {
+	return a.finishTournament()
 }
 
 func (a *api_impl) Balance(playerId string) (int, error) {
 	a.dbMux.Lock()
 	defer a.dbMux.Unlock()
 
-	return a.balance(playerId)
+	return a.db.PlayerPoints(playerId)
 }
 
-func (a *api_impl) balance(playerId string) (int, error) {
-	return a.db.PlayerPoints(playerId)
+func (a *api_impl) finishTournament() (Winner, error) {
+	if len(a.joinedPlayers) == 0 {
+		return Winner{}, nil
+	}
+
+	score, err := a.db.MultiplePlayerPoints(a.joinedPlayers)
+	if err != nil {
+		return Winner{}, nil
+	}
+
+	maxPts := 0
+	winnerId := ""
+	for id, pts := range score {
+		if pts > maxPts {
+			maxPts = pts
+			winnerId = id
+		}
+	}
+
+	info, err := a.db.TournamentInfo(a.activeTournamentId)
+	if err != nil {
+		return Winner{}, err
+	}
+
+	totalPrize := info.Deposit * len(a.joinedPlayers)
+	sponsors, ok := a.playersFunded[winnerId]
+	if !ok {
+		// player payed it's own points for joining
+		if err := a.db.UpdatePlayer(winnerId, maxPts+totalPrize); err != nil {
+			return Winner{}, err
+		}
+	} else {
+		// give part of the prize to backers
+		totalPrize /= len(sponsors) + 1
+		if err := a.db.UpdatePlayer(winnerId, maxPts+totalPrize); err != nil {
+			return Winner{}, err
+		}
+
+		sponsorsPts, err := a.db.MultiplePlayerPoints(sponsors)
+		if err != nil {
+			return Winner{}, nil
+		}
+
+		for id, pts := range sponsorsPts {
+			if err := a.db.UpdatePlayer(id, pts+totalPrize); err != nil {
+				return Winner{}, err
+			}
+		}
+	}
+
+	a.activeTournamentId = noActiveTournament
+	return Winner{winnerId, maxPts + totalPrize}, nil
 }

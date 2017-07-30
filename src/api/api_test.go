@@ -187,7 +187,7 @@ func TestApi_JoinTournamentInsufficientFunds(t *testing.T) {
 	})
 }
 
-func TestApi_JoinTournament(t *testing.T) {
+func TestApi_TournamentFullLifecycle(t *testing.T) {
 	a, closer, err := setupApi()
 	if err != nil {
 		t.Fatal(err)
@@ -264,6 +264,57 @@ func TestApi_JoinTournament(t *testing.T) {
 		t.Error("wrong ballance", b4)
 	}
 
+	if b5 != 0 {
+		t.Error("wrong ballance", b5)
+	}
+
+	w, err := a.ResultTournament()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.PlayerId != "P1" {
+		t.Error("Wrong wnner", w.PlayerId)
+	}
+	if w.Prize != 550 {
+		t.Error("Wrong prize", w.Prize)
+	}
+
+	b1, err = a.Balance("P1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b1 != 550 {
+		t.Error("wrong ballance", b1)
+	}
+
+	b2, err = a.Balance("P2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b2 != 550 {
+		t.Error("wrong ballance", b2)
+	}
+
+	b3, err = a.Balance("P3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b3 != 550 {
+		t.Error("wrong ballance", b3)
+	}
+
+	b4, err = a.Balance("P4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b4 != 750 {
+		t.Error("wrong ballance", b4)
+	}
+
+	b5, err = a.Balance("P5")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if b5 != 0 {
 		t.Error("wrong ballance", b5)
 	}
