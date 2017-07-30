@@ -229,8 +229,8 @@ func (a *api_impl) finishTournament() (Winner, error) {
 		}
 	} else {
 		// give part of the prize to backers
-		totalPrize /= len(sponsors) + 1
-		if err := a.db.UpdatePlayer(winnerId, maxPts+totalPrize); err != nil {
+		prize := totalPrize / (len(sponsors) + 1)
+		if err := a.db.UpdatePlayer(winnerId, maxPts+prize); err != nil {
 			return Winner{}, err
 		}
 
@@ -240,12 +240,12 @@ func (a *api_impl) finishTournament() (Winner, error) {
 		}
 
 		for id, pts := range sponsorsPts {
-			if err := a.db.UpdatePlayer(id, pts+totalPrize); err != nil {
+			if err := a.db.UpdatePlayer(id, pts+prize); err != nil {
 				return Winner{}, err
 			}
 		}
 	}
 
 	a.activeTournamentId = noActiveTournament
-	return Winner{winnerId, maxPts + totalPrize}, nil
+	return Winner{winnerId, totalPrize}, nil
 }

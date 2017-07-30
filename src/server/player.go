@@ -1,11 +1,11 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"api"
-	"strconv"
-	"encoding/json"
 )
 
 type takeHandler struct {
@@ -31,7 +31,7 @@ func (h takeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(pts) > 1  || len(playerId) > 1{
+	if len(pts) > 1 || len(playerId) > 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -41,7 +41,6 @@ func (h takeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 
 	if err := h.a.Take(playerId[0], p); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -73,7 +72,7 @@ func (h fundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(pts) > 1  || len(playerId) > 1{
+	if len(pts) > 1 || len(playerId) > 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -101,7 +100,7 @@ func newBalanceHandler(a api.Api) http.Handler {
 
 type Balance struct {
 	PlayerId string
-	Balance int
+	Balance  int
 }
 
 func (h balanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +112,7 @@ func (h balanceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(playerId) > 1{
+	if len(playerId) > 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

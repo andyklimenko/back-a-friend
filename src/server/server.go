@@ -28,19 +28,16 @@ func StartServer(curDir string) (chan struct{}, error) {
 		return nil, err
 	}
 
-	handlers := make(map[string]http.Handler)
-	handlers["/take"] = newTakeHandler(a)
-	handlers["/fund"] = newFundHandler(a)
-	handlers["/balance"] = newBalanceHandler(a)
-
 	doneCh := make(chan struct{})
 	go func() {
 		// init http-server
-		http.Handle("/take", handlers["/take"])
-		http.Handle("/fund", handlers["/fund"])
-		http.Handle("/balance", handlers["/balance"])
+		http.Handle("/take", newTakeHandler(a))
+		http.Handle("/fund", newFundHandler(a))
+		http.Handle("/balance", newBalanceHandler(a))
+		http.Handle("/announceTournament", newAnnounceTournament(a))
+		http.Handle("/joinTournament", newJoinTournament(a))
+		http.Handle("/resultTournament", newResultTournament(a))
 		http.ListenAndServe(":8080", nil)
-		close(doneCh)
 	}()
 	return doneCh, nil
 }

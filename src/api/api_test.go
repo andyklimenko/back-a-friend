@@ -275,7 +275,7 @@ func TestApi_TournamentFullLifecycle(t *testing.T) {
 	if w.PlayerId != "P1" {
 		t.Error("Wrong wnner", w.PlayerId)
 	}
-	if w.Prize != 550 {
+	if w.Prize != 2000 {
 		t.Error("Wrong prize", w.Prize)
 	}
 
