@@ -103,3 +103,123 @@ func TestApi_AnounceTournament(t *testing.T) {
 		t.Error(errors.New("Created tournament duplicate"))
 	}
 }
+
+func TestApi_JoinTournamentInsufficientFunds(t *testing.T) {
+	const (
+		playerId = "P1"
+		tourId   = 1
+	)
+
+	t.Run("no backers", func(t *testing.T) {
+		a, closer, err := setupApi()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closer()
+
+		if err := a.Fund(playerId, 300); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.AnnounceTournament(tourId, 1000); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.JoinTournament(tourId, playerId, []string{}); err != ErrInsufficientFunds {
+			t.Error(err)
+		}
+	})
+
+	t.Run("3 backers, player with no pts", func(t *testing.T) {
+		a, closer, err := setupApi()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closer()
+
+		if err := a.Fund("P1", 10); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Fund("P2", 300); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Fund("P3", 300); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Fund("P4", 500); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := a.AnnounceTournament(tourId, 1000); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := a.JoinTournament(tourId, "P1", []string{"P2", "P3", "P4"}); err != ErrInsufficientFunds {
+			t.Fatal("P1 should have no sufficient funds")
+		}
+	})
+
+	t.Run("3 backers, with not enough pts", func(t *testing.T) {
+		a, closer, err := setupApi()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closer()
+
+		if err := a.Fund("P1", 300); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Fund("P2", 30); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Fund("P3", 300); err != nil {
+			t.Fatal(err)
+		}
+		if err := a.Fund("P4", 500); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := a.AnnounceTournament(tourId, 1000); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := a.JoinTournament(tourId, "P1", []string{"P2", "P3", "P4"}); err != ErrInsufficientFunds {
+			t.Fatal("P2 should have no sufficient funds")
+		}
+	})
+}
+
+func TestApi_JoinTournament(t *testing.T) {
+	a, closer, err := setupApi()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	if err := a.Fund("P1", 300); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Fund("P2", 300); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Fund("P3", 300); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Fund("P4", 500); err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Fund("P5", 1000); err != nil {
+		t.Fatal(err)
+	}
+
+	const tourId = 1
+	if err := a.AnnounceTournament(tourId, 1000); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.JoinTournament(tourId, "P5", []string{}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.JoinTournament(tourId, "P1", []string{"P2", "P3", "P4"}); err != nil {
+		t.Fatal(err)
+	}
+}

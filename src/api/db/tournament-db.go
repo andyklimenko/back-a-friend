@@ -6,18 +6,29 @@ import (
 
 const (
 	announceTournamentQuery      = "insert into Tournaments values (?, ?, '', '')"
-	selectTournamentPlayersQuery = "select Players from Tournaments where TourId=?"
+	selectPlayersTournamentQuery = "select Players from Tournaments where TourId=?"
+	selectTournamentQuery        = "select * from Tournaments where TourId=?"
 	updateTournamentPlayersQuery = "update Tournaments set Players=? where TourId = ?"
 )
 
-func (d *Db) CreateTournament(id int, deposit int) error {
-	d.dbMux.Lock()
-	defer d.dbMux.Unlock()
+type Tournament struct {
+	Id      int
+	Deposit int
+	Winners []string
+	Players []string
+}
 
+func (d *Db) CreateTournament(id int, deposit int) (rerr error) {
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		if rerr != nil {
+			tx.Rollback()
+		}
+	}()
 
 	stmt, err := tx.Prepare(announceTournamentQuery)
 	if err != nil {
@@ -34,19 +45,48 @@ func (d *Db) CreateTournament(id int, deposit int) error {
 	return tx.Commit()
 }
 
-func (d *Db) TournamentExists(tourId int) (bool, error) {
-	rows, err := d.db.Query(selectTournamentPlayersQuery, tourId)
+func (d *Db) TournamentInfo(tourId int) (_ *Tournament, rerr error) {
+	tx, err := d.db.Begin()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return rows.Next(), nil
+	defer func() {
+		if rerr != nil {
+			tx.Rollback()
+		}
+	}()
+
+	rows, err := tx.Query(selectTournamentQuery, tourId)
+	if err != nil {
+		return nil, err
+	}
+
+	if !rows.Next() {
+		return nil, ErrorNotFound
+	}
+
+	var id, depo int
+	var w, p string
+	if err := rows.Scan(&id, &depo, &w, &p); err != nil {
+		return nil, err
+	}
+
+	defer tx.Commit()
+
+	winners := []string{}
+	if w != "" {
+		winners = strings.Split(w, ",")
+	}
+
+	players := []string{}
+	if p != "" {
+		players = strings.Split(p, ",")
+	}
+	return &Tournament{id, depo, winners, players}, nil
 }
 
 func (d *Db) JoinTournament(tourId int, playerId string) (rerr error) {
-	d.dbMux.Lock()
-	defer d.dbMux.Unlock()
-
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -58,7 +98,7 @@ func (d *Db) JoinTournament(tourId int, playerId string) (rerr error) {
 		}
 	}()
 
-	rows, err := tx.Query(selectTournamentPlayersQuery, tourId)
+	rows, err := tx.Query(selectPlayersTournamentQuery, tourId)
 	if err != nil {
 		return err
 	}

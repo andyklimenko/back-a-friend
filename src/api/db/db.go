@@ -3,7 +3,6 @@ package db
 import (
 	"database/sql"
 	"errors"
-	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -20,8 +19,7 @@ var (
 )
 
 type Db struct {
-	db    *sql.DB
-	dbMux sync.Mutex
+	db *sql.DB
 }
 
 func (d *Db) Create(dbPath string) error {
