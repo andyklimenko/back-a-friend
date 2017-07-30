@@ -203,3 +203,51 @@ func TestDb_MultiplePlayerPoints(t *testing.T) {
 		t.Error("wrond deposit ", p2Depo)
 	}
 }
+
+func TestDb_Reset(t *testing.T) {
+	myDb, closer, err := setupMyDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	const (
+		deposit = 1000
+		tourId  = 1
+	)
+	playerId1 := "P1"
+	playerId2 := "P2"
+
+	if err != myDb.CreatePlayer(playerId1, deposit) {
+		t.Fatal(err)
+	}
+	if err != myDb.CreatePlayer(playerId2, deposit) {
+		t.Fatal(err)
+	}
+
+	if err := myDb.CreateTournament(tourId, deposit); err != nil {
+		t.Fatal(err)
+	}
+	if err := myDb.JoinTournament(tourId, playerId1); err != nil {
+		t.Fatal(err)
+	}
+	if err := myDb.JoinTournament(tourId, playerId2); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := myDb.Reset(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := myDb.PlayerPoints(playerId1); err != ErrorNotFound {
+		t.Fatal("P1 was not removed")
+	}
+
+	if _, err := myDb.PlayerPoints(playerId2); err != ErrorNotFound {
+		t.Fatal("P2 was not removed")
+	}
+
+	if _, err := myDb.TournamentInfo(tourId); err != ErrorNotFound {
+		t.Fatal("tournament was not removed")
+	}
+}

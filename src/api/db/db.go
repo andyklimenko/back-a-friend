@@ -9,8 +9,10 @@ import (
 
 const (
 	createTournamentsTable = "CREATE TABLE 'Tournaments' (`TourId`	INTEGER NOT NULL UNIQUE, `Deposit`	INTEGER NOT NULL, `Players`	TEXT, PRIMARY KEY(TourId));"
-	createWinnersTable     = "CREATE TABLE 'Winners' (`Winner-id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, `TourId` INTEGER NOT NULL, `Player-id`	TEXT NOT NULL, `Prize` INTEGER NOT NULL);"
 	createPlayersTable     = "CREATE TABLE `Players` (`PlayerId` TEXT NOT NULL UNIQUE, `Points`	INTEGER, PRIMARY KEY(PlayerId));"
+
+	deleteTournamentsQuery = "DELETE FROM Tournaments;"
+	deletePlayersQuery     = "DELETE FROM Players;"
 )
 
 var (
@@ -43,14 +45,6 @@ func (d *Db) Create(dbPath string) error {
 		return err
 	}
 
-	statement, err = tx.Prepare(createWinnersTable)
-	if err != nil {
-		return err
-	}
-	if _, err = statement.Exec(); err != nil {
-		return err
-	}
-
 	statement, err = tx.Prepare(createPlayersTable)
 	if err != nil {
 		return err
@@ -63,4 +57,25 @@ func (d *Db) Create(dbPath string) error {
 
 func (d *Db) Stop() error {
 	return d.db.Close()
+}
+
+func (d *Db) Reset() (rerr error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if rerr != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if _, err := tx.Exec(deleteTournamentsQuery); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(deletePlayersQuery); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
