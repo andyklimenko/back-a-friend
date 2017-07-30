@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	createTournamentsTable = "CREATE TABLE 'Tournaments' (`TourId`	INTEGER NOT NULL UNIQUE, `Deposit`	INTEGER NOT NULL, `Winners`	TEXT, `Players`	TEXT, PRIMARY KEY(TourId));"
+	createTournamentsTable = "CREATE TABLE 'Tournaments' (`TourId`	INTEGER NOT NULL UNIQUE, `Deposit`	INTEGER NOT NULL, `Players`	TEXT, PRIMARY KEY(TourId));"
 	createWinnersTable     = "CREATE TABLE 'Winners' (`Winner-id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE, `TourId` INTEGER NOT NULL, `Player-id`	TEXT NOT NULL, `Prize` INTEGER NOT NULL);"
 	createPlayersTable     = "CREATE TABLE `Players` (`PlayerId` TEXT NOT NULL UNIQUE, `Points`	INTEGER, PRIMARY KEY(PlayerId));"
 )

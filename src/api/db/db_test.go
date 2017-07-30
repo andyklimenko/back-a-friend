@@ -59,23 +59,19 @@ func TestDb_CreateTournament(t *testing.T) {
 	}
 
 	var tourId, depo int
-	var w, p string
+	var p string
 
 	i := 0
 	for rows.Next() {
 		if i > 0 {
 			t.Fatal("Too many records")
 		}
-		if err := rows.Scan(&tourId, &depo, &w, &p); err != nil {
+		if err := rows.Scan(&tourId, &depo, &p); err != nil {
 			t.Fatal(err)
 		}
 
 		if tourId != tournamentId {
 			t.Error(tourId)
-		}
-
-		if w != "" {
-			t.Error(w)
 		}
 
 		if p != "" {
@@ -133,10 +129,6 @@ func TestDb_JoinTournament(t *testing.T) {
 
 	if tournament.Id != tournamentId {
 		t.Error(tournament.Id)
-	}
-
-	if len(tournament.Winners) != 0 {
-		t.Error(len(tournament.Winners))
 	}
 
 	if len(tournament.Players) != 2 {

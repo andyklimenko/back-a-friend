@@ -28,7 +28,6 @@ type Api interface {
 	JoinTournament(tourId int, playerId string, backers []string) error
 	ResultTournament() (Winner, error)
 	Balance(playerId string) (int, error)
-	FinishTournament() (Winner, error)
 }
 
 type api_impl struct {

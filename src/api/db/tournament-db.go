@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	announceTournamentQuery      = "insert into Tournaments values (?, ?, '', '')"
+	announceTournamentQuery      = "insert into Tournaments values (?, ?, '')"
 	selectPlayersTournamentQuery = "select Players from Tournaments where TourId=?"
 	selectTournamentQuery        = "select * from Tournaments where TourId=?"
 	updateTournamentPlayersQuery = "update Tournaments set Players=? where TourId = ?"
@@ -14,7 +14,6 @@ const (
 type Tournament struct {
 	Id      int
 	Deposit int
-	Winners []string
 	Players []string
 }
 
@@ -67,23 +66,18 @@ func (d *Db) TournamentInfo(tourId int) (_ *Tournament, rerr error) {
 	}
 
 	var id, depo int
-	var w, p string
-	if err := rows.Scan(&id, &depo, &w, &p); err != nil {
+	var p string
+	if err := rows.Scan(&id, &depo, &p); err != nil {
 		return nil, err
 	}
 
 	defer tx.Commit()
 
-	winners := []string{}
-	if w != "" {
-		winners = strings.Split(w, ",")
-	}
-
 	players := []string{}
 	if p != "" {
 		players = strings.Split(p, ",")
 	}
-	return &Tournament{id, depo, winners, players}, nil
+	return &Tournament{id, depo, players}, nil
 }
 
 func (d *Db) JoinTournament(tourId int, playerId string) (rerr error) {
