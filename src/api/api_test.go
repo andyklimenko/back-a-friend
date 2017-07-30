@@ -223,3 +223,31 @@ func TestApi_JoinTournament(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestApi_Take(t *testing.T) {
+	a, closer, err := setupApi()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	if err := a.Fund("P1", 500); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.Take("P1", 1000); err != ErrInsufficientFunds {
+		t.Fatal("Player has too many points")
+	}
+
+	if err := a.Take("P1", 300); err != nil {
+		t.Fatal(err)
+	}
+
+	b, err := a.Balance("P1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b != 200 {
+		t.Error("Wrong player ballance ", b)
+	}
+}

@@ -24,7 +24,7 @@ type funded struct {
 
 type Api interface {
 	Start() error
-	Take(playerToTakeFrom string, points int) error
+	Take(playerId string, points int) error
 	Fund(playerId string, points int) error
 	AnnounceTournament(tourId int, deposit int) error
 	JoinTournament(tourId int, playerId string, backers []string) error
@@ -44,8 +44,19 @@ func (a *api_impl) Start() error {
 	return nil
 }
 
-func (a *api_impl) Take(playerToTakeFrom string, points int) error {
-	return nil
+func (a *api_impl) Take(playerId string, points int) error {
+	a.dbMux.Lock()
+	defer a.dbMux.Unlock()
+
+	ballance, err := a.db.PlayerPoints(playerId)
+	if err != nil {
+		return err
+	}
+	if ballance <= points {
+		return ErrInsufficientFunds
+	}
+
+	return a.db.UpdatePlayer(playerId, ballance - points)
 }
 
 func (a *api_impl) Fund(playerId string, points int) error {
@@ -93,7 +104,7 @@ func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string)
 		return err
 	}
 
-	balance, err := a.balance(playerId)
+	balance, err := a.db.PlayerPoints(playerId)
 	if err != nil {
 		return err
 	}
