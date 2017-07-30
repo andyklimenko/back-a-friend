@@ -29,6 +29,7 @@ type Api interface {
 	JoinTournament(tourId int, playerId string, backers []string) error
 	ResultTournament() (Winner, error)
 	Balance(playerId string) (int, error)
+	Reset() error
 }
 
 type api_impl struct {
@@ -248,4 +249,8 @@ func (a *api_impl) finishTournament() (Winner, error) {
 
 	a.activeTournamentId = noActiveTournament
 	return Winner{winnerId, totalPrize}, nil
+}
+
+func (a *api_impl) Reset() error {
+	return a.db.Reset()
 }

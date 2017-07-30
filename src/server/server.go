@@ -37,6 +37,7 @@ func StartServer(curDir string) (chan struct{}, error) {
 		http.Handle("/announceTournament", newAnnounceTournament(a))
 		http.Handle("/joinTournament", newJoinTournament(a))
 		http.Handle("/resultTournament", newResultTournament(a))
+		http.Handle("/reset", newResetHandler(a))
 		http.ListenAndServe(":8080", nil)
 	}()
 	return doneCh, nil
