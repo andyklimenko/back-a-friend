@@ -8,9 +8,12 @@ import (
 )
 
 var (
-	ErrInsufficientFunds  = errors.New("Not enough funds")
-	ErrInvalidQueryResult = errors.New("Invalid query result")
+	ErrInsufficientFunds          = errors.New("Not enough funds")
+	ErrInvalidQueryResult         = errors.New("Invalid query result")
+	ErrTournamentAlreadyAnnounced = errors.New("Another tournament is already announced")
 )
+
+const noActiveTournament = -1
 
 type Winner struct {
 	PlayerId string
@@ -34,13 +37,15 @@ type Api interface {
 
 type api_impl struct {
 	db                 *db.Db
-	activeTournamentId int
-	funded             map[string]*funded
 	dbMux              sync.Mutex
+	activeTournamentId int
+	playersFunded      map[string]*funded
+	joinedPlayers      []string
 }
 
 func (a *api_impl) Start() error {
-	a.funded = make(map[string]*funded)
+	a.playersFunded = make(map[string]*funded)
+	a.activeTournamentId = noActiveTournament
 	return nil
 }
 
@@ -56,7 +61,7 @@ func (a *api_impl) Take(playerId string, points int) error {
 		return ErrInsufficientFunds
 	}
 
-	return a.db.UpdatePlayer(playerId, ballance - points)
+	return a.db.UpdatePlayer(playerId, ballance-points)
 }
 
 func (a *api_impl) Fund(playerId string, points int) error {
@@ -84,6 +89,10 @@ func (a *api_impl) AnnounceTournament(tourId int, deposit int) error {
 	a.dbMux.Lock()
 	defer a.dbMux.Unlock()
 
+	if a.activeTournamentId != noActiveTournament {
+		return ErrTournamentAlreadyAnnounced
+	}
+
 	info, err := a.db.TournamentInfo(tourId)
 	if err != nil && err != db.ErrorNotFound {
 		return err
@@ -92,7 +101,11 @@ func (a *api_impl) AnnounceTournament(tourId int, deposit int) error {
 		return db.ErrAlreadyExists
 	}
 
-	return a.db.CreateTournament(tourId, deposit)
+	if err := a.db.CreateTournament(tourId, deposit); err != nil {
+		return nil
+	}
+	a.activeTournamentId = tourId
+	return nil
 }
 
 func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string) error {
@@ -114,6 +127,9 @@ func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string)
 	}
 
 	if balance >= info.Deposit && len(backers) == 0 {
+		if err := a.db.UpdatePlayer(playerId, balance-info.Deposit); err != nil {
+			return err
+		}
 		return a.db.JoinTournament(tourId, playerId)
 	}
 
@@ -144,9 +160,16 @@ func (a *api_impl) JoinTournament(tourId int, playerId string, backers []string)
 		}
 		f.backers = append(f.backers, b)
 	}
-	a.funded[playerId] = f
+	a.playersFunded[playerId] = f
+	if err := a.db.UpdatePlayer(playerId, balance-requiredPts); err != nil {
+		return err
+	}
 
-	return a.db.JoinTournament(tourId, playerId)
+	if err := a.db.JoinTournament(tourId, playerId); err != nil {
+		return err
+	}
+	a.joinedPlayers = append(a.joinedPlayers, playerId)
+	return nil
 }
 
 func (a *api_impl) ResultTournament() ([]Winner, error) {

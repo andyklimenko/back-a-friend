@@ -99,7 +99,7 @@ func TestApi_AnounceTournament(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := a.AnnounceTournament(tourId, 1000); err != db.ErrAlreadyExists {
+	if err := a.AnnounceTournament(tourId, 1000); err != ErrTournamentAlreadyAnnounced {
 		t.Error(errors.New("Created tournament duplicate"))
 	}
 }
@@ -221,6 +221,51 @@ func TestApi_JoinTournament(t *testing.T) {
 
 	if err := a.JoinTournament(tourId, "P1", []string{"P2", "P3", "P4"}); err != nil {
 		t.Fatal(err)
+	}
+
+	b1, err := a.Balance("P1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b2, err := a.Balance("P2")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b3, err := a.Balance("P3")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b4, err := a.Balance("P4")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	b5, err := a.Balance("P5")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if b1 != 50 {
+		t.Error("wrong ballance", b1)
+	}
+
+	if b2 != 50 {
+		t.Error("wrong ballance", b2)
+	}
+
+	if b3 != 50 {
+		t.Error("wrong ballance", b3)
+	}
+
+	if b4 != 250 {
+		t.Error("wrong ballance", b4)
+	}
+
+	if b5 != 0 {
+		t.Error("wrong ballance", b5)
 	}
 }
 
