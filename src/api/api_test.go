@@ -39,13 +39,13 @@ func setupApi() (_ Api, _ func(), rerr error) {
 		}
 	}()
 
-	a := &api_impl{db: mydb}
-	if err := a.Start(); err != nil {
+	a, err := CreateApi(mydb)
+	if err != nil {
 		return nil, func() {}, err
 	}
 
 	return a, func() {
-		a.db.Stop()
+		a.Stop()
 		os.Remove(tmpDir)
 	}, nil
 }

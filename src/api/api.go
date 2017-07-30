@@ -22,6 +22,7 @@ type Winner struct {
 
 type Api interface {
 	Start() error
+	Stop() error
 	Take(playerId string, points int) error
 	Fund(playerId string, points int) error
 	AnnounceTournament(tourId int, deposit int) error
@@ -42,6 +43,19 @@ func (a *api_impl) Start() error {
 	a.playersFunded = make(map[string][]string)
 	a.activeTournamentId = noActiveTournament
 	return nil
+}
+
+func (a *api_impl) Stop() error {
+	return a.db.Stop()
+}
+
+func CreateApi(apiDb *db.Db) (Api, error) {
+	a := &api_impl{}
+	a.db = apiDb
+	if err := a.Start(); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 func (a *api_impl) Take(playerId string, points int) error {
