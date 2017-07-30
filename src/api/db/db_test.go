@@ -32,7 +32,7 @@ func setupMyDb() (_ *Db, _ func(), rerr error) {
 	}
 
 	closer := func() {
-		mydb.db.Close()
+		mydb.Stop()
 		os.RemoveAll(tmpDir)
 	}
 
@@ -165,41 +165,5 @@ func TestDb_PlayerPointsNegative(t *testing.T) {
 
 	if _, err := myDb.PlayerPoints("no player created yet"); err != ErrorNotFound {
 		t.Error(err)
-	}
-}
-
-func TestDb_FundPlayer(t *testing.T) {
-	myDb, closer, err := setupMyDb()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closer()
-
-	players := make(map[string]int)
-	players["Joe"] = 100
-	players["Bob"] = 500
-
-	for player, pts := range players {
-		if err := myDb.FundPlayer(player, pts); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := myDb.FundPlayer("Joe", 400); err != nil {
-		t.Fatal(err)
-	}
-
-	joePts, err := myDb.PlayerPoints("Joe")
-	if err != nil {
-		t.Error(err)
-	}
-
-	bobPts, err := myDb.PlayerPoints("Joe")
-	if err != nil {
-		t.Error(err)
-	}
-
-	if joePts != bobPts {
-		t.Error(joePts, bobPts)
 	}
 }

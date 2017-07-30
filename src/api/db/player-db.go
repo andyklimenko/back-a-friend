@@ -34,7 +34,7 @@ func (d *Db) PlayerPoints(playerId string) (_ int, rerr error) {
 	return pts, tx.Commit()
 }
 
-func (d *Db) updatePlayer(pid string, pts int) (rerr error) {
+func (d *Db) UpdatePlayer(pid string, pts int) (rerr error) {
 	d.dbMux.Lock()
 	defer d.dbMux.Unlock()
 
@@ -60,7 +60,7 @@ func (d *Db) updatePlayer(pid string, pts int) (rerr error) {
 	return tx.Commit()
 }
 
-func (d *Db) createPlayer(pid string, pts int) (rerr error) {
+func (d *Db) CreatePlayer(pid string, pts int) (rerr error) {
 	d.dbMux.Lock()
 	defer d.dbMux.Unlock()
 
@@ -84,23 +84,4 @@ func (d *Db) createPlayer(pid string, pts int) (rerr error) {
 		return err
 	}
 	return tx.Commit()
-}
-
-// to be moved on API-level
-func (d *Db) FundPlayer(playerId string, points int) error {
-	pts, err := d.PlayerPoints(playerId)
-	if err == nil {
-		//update
-		if err := d.updatePlayer(playerId, pts+points); err != nil {
-			return err
-		}
-		return nil
-	} else if err == ErrorNotFound {
-		//add new
-		if err := d.createPlayer(playerId, points); err != nil {
-			return err
-		}
-		return nil
-	}
-	return err
 }

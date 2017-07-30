@@ -62,3 +62,7 @@ func (d *Db) Create(dbPath string) error {
 	}
 	return tx.Commit()
 }
+
+func (d *Db) Stop() error {
+	return d.db.Close()
+}
