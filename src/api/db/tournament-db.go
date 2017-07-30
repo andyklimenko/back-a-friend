@@ -1,6 +1,8 @@
 package db
 
-import "strings"
+import (
+	"strings"
+)
 
 const (
 	announceTournamentQuery      = "insert into Tournaments values (?, ?, '', '')"
@@ -29,10 +31,16 @@ func (d *Db) CreateTournament(id int, deposit int) error {
 		return err
 	}
 
-	if err := tx.Commit(); err != nil {
-		return err
+	return tx.Commit()
+}
+
+func (d *Db) TournamentExists(tourId int) (bool, error) {
+	rows, err := d.db.Query(selectTournamentPlayersQuery, tourId)
+	if err != nil {
+		return false, err
 	}
-	return nil
+
+	return rows.Next(), nil
 }
 
 func (d *Db) JoinTournament(tourId int, playerId string) (rerr error) {

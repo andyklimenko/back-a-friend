@@ -167,3 +167,19 @@ func TestDb_PlayerPointsNegative(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestDb_TournamentExistsNegative(t *testing.T) {
+	myDb, closer, err := setupMyDb()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	exists, err := myDb.TournamentExists(42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if exists {
+		t.Error("Not existing tournament found")
+	}
+}

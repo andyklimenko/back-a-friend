@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path"
@@ -40,7 +41,7 @@ func setupApi() (_ Api, _ func(), rerr error) {
 
 	a := &api_impl{db: mydb}
 	if err := a.Start(); err != nil {
-		return nil, func(){}, err
+		return nil, func() {}, err
 	}
 
 	return a, func() {
@@ -83,5 +84,22 @@ func TestApi_Fund(t *testing.T) {
 
 	if joePts != bobPts {
 		t.Error(joePts, bobPts)
+	}
+}
+
+func TestApi_AnounceTournament(t *testing.T) {
+	a, closer, err := setupApi()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	tourId := 42
+	if err := a.AnnounceTournament(tourId, 1000); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := a.AnnounceTournament(tourId, 1000); err != db.ErrAlreadyExists {
+		t.Error(errors.New("Created tournament duplicate"))
 	}
 }
